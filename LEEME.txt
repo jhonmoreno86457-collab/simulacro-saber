@@ -1,0 +1,15 @@
+SIMULACRO SABER 11 — CÓMO PUBLICARLO COMO APLICACIÓN
+Creado por Jhon Carlos Moreno Soto con la ayuda de Claude.
+
+Archivos de esta carpeta (súbelos todos, sin cambiarles el nombre):
+  index.html, manifest.webmanifest, sw.js, icon-192.png, icon-512.png, icon-maskable-512.png
+
+1. Entra a github.com con tu cuenta (jhonmoreno86457-collab).
+2. Crea un repositorio nuevo, público, llamado exactamente: simulacro-saber
+3. En el repositorio: Add file > Upload files. Sube los 6 archivos y toca Commit changes.
+4. Settings > Pages > Source: Deploy from a branch > Branch: main, carpeta / (root) > Save.
+5. Espera unos minutos y abre: https://jhonmoreno86457-collab.github.io/simulacro-saber/
+6. El código QR (codigo-qr-simulacro.png) y el cartel (cartel-qr-simulacro.png) llevan a esa dirección.
+
+Para actualizar el simulador: sube el nuevo index.html al mismo repositorio (reemplaza el anterior).
+Los celulares reciben la versión nueva la próxima vez que lo abran con internet.
