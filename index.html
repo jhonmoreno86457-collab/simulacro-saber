@@ -314,6 +314,14 @@ blockquote{margin:.7em 0;padding:.4em 0 .4em 14px;border-left:3px solid var(--li
 .foot-cred p{margin:0 0 6px}
 .credits .autor{font-family:var(--font-d);font-weight:800;font-size:1.35em;margin:0}
 
+/* aviso de instalación */
+.inst{position:relative;background:var(--sun-soft);color:var(--sun-ink);border:1.5px solid var(--sun);border-radius:var(--r);padding:14px 16px 12px;margin:4px 0 18px}
+.inst p{margin:0 0 10px;line-height:1.4}
+.inst .inst-t{font-family:var(--font-d);font-weight:800;font-size:1.12em;margin-bottom:4px;padding-right:64px}
+.inst .btn{text-decoration:none;margin-bottom:6px}
+.inst .mini{margin:6px 0 0;color:inherit;opacity:.9}
+.inst .inst-x{position:absolute;top:12px;right:14px;color:inherit;font-size:.85em}
+
 </style>
 </head>
 <body>
@@ -1655,8 +1663,30 @@ let installEvt = null;
 const isStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
 const secure = () => location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const canInstall = () => !inFrame && !isStandalone() && secure();
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (V.name === 'panel' || V.name === 'install') render(true); });
-window.addEventListener('appinstalled', () => { installEvt = null; toast('¡Listo! El simulador quedó instalado en este celular.'); });
+const UA = navigator.userAgent || '';
+const isIOS = /iPhone|iPad|iPod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(UA);
+const inApp = /GSA\/|FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|; wv\)/i.test(UA);
+const chromeIntent = () => 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+let instHide = false;
+function installBanner(){
+  if (!canInstall() || instHide) return '';
+  const close = '<button class="link inst-x" data-act="instHide">Ahora no</button>';
+  let h;
+  if (installEvt) h = `<p class="inst-t">Instálalo en este celular</p><p>Queda con su ícono, como una aplicación, y funciona sin internet.</p>
+    <button class="btn block" data-act="installNow">Instalar ahora</button>`;
+  else if (inApp && isAndroid) h = `<p class="inst-t">Ábrelo en Chrome para instalarlo</p><p>Lo abriste dentro de la aplicación de Google, y desde ahí no se puede instalar.</p>
+    <a class="btn block" href="${chromeIntent()}">Abrir en Chrome</a>
+    <p class="mini">Si no funciona: toca <b>⋮</b> (arriba a la derecha) y elige <b>Abrir en Chrome</b>.</p>`;
+  else if (inApp && isIOS) h = `<p class="inst-t">Ábrelo en Safari para instalarlo</p><p>Lo abriste dentro de otra aplicación. Copia el enlace, pégalo en Safari y ahí toca <b>Compartir → Agregar a inicio</b>.</p>
+    <button class="btn block" data-act="copyUrl">Copiar enlace</button>`;
+  else if (isIOS) h = `<p class="inst-t">Instálalo en este iPhone o iPad</p><p>Toca el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba) y elige <b>Agregar a inicio</b>.</p>`;
+  else h = `<p class="inst-t">Instálalo en este celular</p><p>Toca el menú <b>⋮</b> (arriba a la derecha) y elige <b>Instalar aplicación</b> o <b>Agregar a la pantalla principal</b>.</p>`;
+  return `<div class="inst" id="instb">${h}${close}</div>`;
+}
+function refreshBanner(){ const b = document.getElementById('instb'); if (b) { const n = installBanner(); if (n) b.outerHTML = n; else b.remove(); return true; } return false; }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (!refreshBanner() && (V.name === 'panel' || V.name === 'install')) render(true); });
+window.addEventListener('appinstalled', () => { installEvt = null; instHide = true; refreshBanner(); toast('¡Listo! El simulador quedó instalado. Ábrelo desde su ícono.'); });
 function installRow(){ return canInstall() ? '<button data-act="install">Instalar como aplicación<span>›</span></button>' : ''; }
 function footer(){
   return `<footer class="foot-cred"><p>Creado por <b>${esc(CONFIG.autor)}</b> con la ayuda de Claude.<br>Preguntas de los cuadernillos Saber 11.° del Icfes.</p><button class="link" data-act="about">Ver créditos</button></footer>`;
@@ -1678,7 +1708,7 @@ VIEWS.install = function(){
 VIEWS.home = function(){
   const ids = (S.order || []).filter(id => S.profiles[id]);
   if (!ids.length) return VIEWS.newProfile(true);
-  return topbar() + `
+  return topbar() + installBanner() + `
   <section class="hero"><p class="eyebrow">${esc(CONFIG.sub)}</p><h1>¿Quién va a practicar?</h1><p>Cada estudiante tiene su propio registro de avance en este celular.</p></section>
   <div class="stack">${ids.map(id => { const p = S.profiles[id]; const nh = (p.hist || []).length; return `
     <button class="prof" data-act="pick" data-id="${esc(id)}"><span class="av">${esc(initials(p.name))}</span><span><b>${esc(p.name)}</b><small>${esc(gradoTxt(p.grade))}${nh ? ' · ' + nh + (nh === 1 ? ' simulacro' : ' simulacros') : ' · sin simulacros aún'}</small></span><span class="chev">›</span></button>`; }).join('')}
@@ -1689,7 +1719,7 @@ VIEWS.home = function(){
 
 VIEWS.newProfile = function(first){
   const hasAny = (S.order || []).some(id => S.profiles[id]);
-  return topbar() + `
+  return topbar() + (first ? installBanner() : '') + `
   ${hasAny ? backBtn('home') : ''}
   <section class="hero">${first ? `<p class="eyebrow">${esc(CONFIG.sub)}</p><h1>Prepárate para el Saber 11, a tu ritmo</h1>
     <p>Cada simulacro tiene 5 áreas con 10 preguntas al azar. Al terminar ves tu puntaje de 0 a 50, por qué fallaste cada pregunta y cómo vas mejorando. Funciona sin internet.</p>` : '<h1>Nuevo estudiante</h1>'}</section>
@@ -1713,7 +1743,7 @@ VIEWS.panel = function(){
   const last = HH[HH.length - 1];
   const prev = HH[HH.length - 2];
   let html = topbar('<button class="tbtn" data-act="home" aria-label="Cambiar de estudiante">Cambiar</button>');
-  html += `<section class="hero"><p class="eyebrow">${esc([gradoTxt(p.grade), p.school].filter(Boolean).join(' · '))}</p><h1>Hola, ${esc(firstName(p.name))}</h1><p class="motiv">${esc(V.saludo || (V.saludo = pick(MOT_SALUDO)))}</p></section>`;
+  html += `<section class="hero"><p class="eyebrow">${esc([gradoTxt(p.grade), p.school].filter(Boolean).join(' · '))}</p><h1>Hola, ${esc(firstName(p.name))}</h1><p class="motiv">${esc(V.saludo || (V.saludo = pick(MOT_SALUDO)))}</p></section>` + (T ? '' : installBanner());
   if (T) {
     const n = T.units.reduce((s, u) => s + u.q.length, 0);
     const cur = T.units.slice(0, T.u).reduce((s, u) => s + u.q.length, 0) + T.i + 1;
@@ -2137,7 +2167,9 @@ const ACT = {
   progress(){ go('progress'); },
   backup(){ go('backup'); },
   install(){ go('install'); },
-  async installNow(){ if (!installEvt) { toast('Usa el menú del navegador para instalarlo.'); return; } try { installEvt.prompt(); await installEvt.userChoice; } catch (e) {} installEvt = null; render(true); },
+  instHide(){ instHide = true; refreshBanner(); },
+  async copyUrl(){ const u = location.href.split('#')[0]; try { await navigator.clipboard.writeText(u); toast('Enlace copiado. Ahora pégalo en Safari.'); } catch (e) { toast(u); } },
+  async installNow(){ if (!installEvt) { toast('Usa el menú del navegador para instalarlo.'); return; } try { installEvt.prompt(); await installEvt.userChoice; } catch (e) {} installEvt = null; if (!refreshBanner()) render(true); },
   about(){ go('about'); },
   async copy(){
     const ta = document.getElementById('bkout'); const txt = lastCode || (ta && ta.value) || '';
